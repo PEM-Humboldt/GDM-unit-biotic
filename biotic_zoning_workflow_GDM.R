@@ -6,11 +6,6 @@
 #              utilizando 'terra' para alto rendimiento.
 ################################################################################
 
-################################################################################
-# PROYECTO: Modelado GDM y Zonificación Biótica (San Andrés - SeaFlower)
-# DESCRIPCIÓN: Flujo de trabajo para modelar recambio de especies y zonificación.
-# MOTOR: 'terra' y 'data.table' para optimización de memoria y velocidad.
-################################################################################
 
 # 1. CARGA DE LIBRERÍAS ----
 library(speciesgeocodeR)
