@@ -1,5 +1,5 @@
 ################################################################################
-# Autor Elkin Noguera-Urbano. 28/04/2026
+# Autor Elkin Noguera-Urbano. 28/04/2022
 # PROYECTO: Modelado GDM y Zonificación Biótica (SeaFlower)
 # ARCHIVO: gdm_zoning_analysis.R
 # DESCRIPCIÓN: Análisis de recambio de biodiversidad y clasificación espacial
