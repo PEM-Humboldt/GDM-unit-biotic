@@ -6,114 +6,130 @@
 #              utilizando 'terra' para alto rendimiento.
 ################################################################################
 
-# 1. CARGA DE LIBRERÍAS ----
-# Se utilizan las versiones más eficientes para manejo de datos espaciales y tablas
-library(data.table)   # Procesamiento de tablas a alta velocidad
-library(gdm)          # Generalized Dissimilarity Modeling
-library(terra)        # Motor geoespacial (sucesor de 'raster')
-library(geocmeans)    # Clustering difuso espacial
-library(future)       # Computación en paralelo
-library(viridis)      # Paletas de colores científicas
-library(ggplot2)      # Visualización estadística
+################################################################################
+# PROYECTO: Modelado GDM y Zonificación Biótica (San Andrés - SeaFlower)
+# DESCRIPCIÓN: Flujo de trabajo para modelar recambio de especies y zonificación.
+# MOTOR: 'terra' y 'data.table' para optimización de memoria y velocidad.
+################################################################################
 
-# 2. GESTIÓN DE DATOS BIOLÓGICOS ----
-# Cargar registros de ocurrencia
+# 1. CARGA DE LIBRERÍAS ----
+library(speciesgeocodeR)
+library(data.table)
+library(gdm)
+library(sf)
+library(terra)      # Sustituye a 'raster' por su eficiencia
+library(geocmeans)
+library(ggplot2)
+library(future)
+library(viridis)
+
+# 2. CARGA Y LIMPIEZA DE DATOS BIOLÓGICOS ----
 reg_loc <- read.csv("D:/2022/SeaFlower/Análisis_multigrupo/San_Andres_r.csv", sep = ";")
 
-# Limpieza: Únicos por especie y coordenadas para evitar sesgos
-acg <- unique(reg_loc[, c("species", "longitude", "latitude")])
+# Eliminar duplicados de especie y coordenadas
+dups2 <- duplicated(reg_loc[, c("species", "longitude", "latitude")])
+acg <- reg_loc[!dups2, ]
 
-# Definición de Sitios Únicos: Necesario para la matriz de disimilitud del GDM
-acg2 <- unique(reg_loc[, c("longitude", "latitude")])
-acg2$site <- seq_len(nrow(acg2)) 
+# Evaluación de sitios según coordenadas únicas
+dups3 <- duplicated(reg_loc[, c("longitude", "latitude")])
+acg2 <- reg_loc[!dups3, ]
+sites <- seq(1, nrow(acg2), 1)
+acg2 <- cbind(sites, acg2)
+acg2 <- acg2[, -2] # Eliminar columna redundante de especie
 
-# Unión eficiente usando data.table (Indexación por coordenadas)
-DT <- as.data.table(acg)
+# Unión de tablas mediante data.table para eficiencia
+DT  <- as.data.table(acg)
 DT2 <- as.data.table(acg2)
 setkey(DT, longitude, latitude)
 setkey(DT2, longitude, latitude)
 resultTable <- DT[DT2]
 
-# 3. VARIABLES AMBIENTALES (Motor terra) ----
-folder_env <- "D:/2022/SeaFlower/Raster_variables/San_andres/Resample"
-file_list  <- list.files(path = folder_env, pattern = "\\.tif$", full.names = TRUE)
+# 3. CARGA DE VARIABLES AMBIENTALES ----
+folder <- "D:/2022/SeaFlower/Raster_variables/San_andres/Resample"
+file_list <- list.files(path = folder, pattern = "\\.tif$", full.names = TRUE)
 
-# Carga de SpatRaster (Carga perezosa, eficiente en memoria)
+# Cargar capas como SpatRaster y proyectar a WGS84
 envs <- rast(file_list) 
-
-# Asegurar Sistema de Referencia de Coordenadas (WGS84)
 envs <- project(envs, "epsg:4326")
 
-# 4. EXTRACCIÓN Y PREPARACIÓN DEL MODELO ----
-# Extraer valores ambientales en las coordenadas de los sitios
-coords   <- as.matrix(resultTable[, .(longitude, latitude)])
-presvals <- terra::extract(envs, coords)
+# 4. EXTRACCIÓN DE VALORES Y PREPARACIÓN DE TABLAS ----
+latlong <- as.matrix(resultTable[, .(longitude, latitude)])
+presvals <- terra::extract(envs, latlong)
 
-# Construir tabla final de entrenamiento (eliminando ID de extracción)
-data_final <- data.frame(
+# Consolidación del dataframe 'data_tonina' (siguiendo tu lógica original)
+data_tonina <- data.frame(
   species = resultTable$species,
-  site    = resultTable$site,
-  presvals[, -1], 
+  site    = resultTable$sites,
+  presvals[, -1], # Eliminar columna ID de terra::extract
   Long    = resultTable$longitude,
   Lat     = resultTable$latitude
 )
 
-# Limpiar registros fuera de la máscara ambiental
-data_final <- na.omit(data_final)
+# Limpiar NAs y renombrar columnas
+data_tonina <- na.omit(data_tonina)
+colnames(data_tonina) <- c("species", "site", "Altura", "IntProcess", 
+                           "Orient", "Pend", "Process", "Long", "Lat")
 
-# Definir nombres de columnas (Ajustar según nombres de tus .tif)
-colnames(data_final) <- c("species", "site", "Altura", "IntProcess", 
-                          "Orient", "Pend", "Process", "Long", "Lat")
+# 5. MODELADO GDM ----
+sppTab <- data_tonina[, c("species", "site", "Long", "Lat")]
+envTab <- data_tonina[, c("site", "Altura", "IntProcess", "Orient", "Pend", "Process", "Long", "Lat")]
 
-# 5. MODELADO DE DISIMILITUD GENERALIZADA (GDM) ----
-# Preparar tablas de formato 'site-pair'
-sppTab <- data_final[, c("species", "site", "Long", "Lat")]
-envTab <- data_final[, c("site", "Altura", "IntProcess", "Orient", "Pend", "Process", "Long", "Lat")]
-
+# Formato sitio-par y ajuste del modelo
 gdmTab <- formatsitepair(sppTab, bioFormat = 2, XColumn = "Long", YColumn = "Lat",
                          sppColumn = "species", siteColumn = "site", predData = envTab)
 
-# Ajustar el modelo GDM con distancia geográfica habilitada
-gdm_model <- gdm(gdmTab, geo = TRUE)
-summary(gdm_model)
+gdm.1 <- gdm(gdmTab, geo = TRUE)
+summary(gdm.1)
 
-# 6. TRANSFORMACIÓN AMBIENTAL Y PCA ----
-# Transformar las capas originales según la importancia biológica calculada
-gdm_trans <- gdm.transform(gdm_model, envs)
+# GDM usando el stack de rasters directamente
+gdmTab.rast <- formatsitepair(sppTab, bioFormat = 2, XColumn = "Long", YColumn = "Lat",
+                              sppColumn = "species", siteColumn = "site", predData = envs)
+gdmTab.rast <- na.omit(gdmTab.rast)
+gdm.rast <- gdm(gdmTab.rast, geo = TRUE)
 
-# Reducción de dimensiones mediante PCA sobre 10,000 puntos aleatorios
-sample_pts <- spatSample(gdm_trans, 10000, na.rm = TRUE)
-pca_model  <- prcomp(sample_pts, scale. = TRUE)
+# 6. TRANSFORMACIÓN Y PCA (Visualización RGB) ----
+gdm.trans.data <- gdm.transform(gdm.rast, envs)
 
-# Predecir los 3 primeros componentes para visualización RGB
-gdm_pca <- predict(gdm_trans, pca_model, index = 1:3)
+# Reducción de dimensiones
+sample.trans <- spatSample(gdm.trans.data, 10000, na.rm = TRUE)
+sample.pca   <- prcomp(sample.trans, scale. = TRUE)
+gdm.pca      <- predict(gdm.trans.data, sample.pca, index = 1:3)
 
-# Normalización 0 a 1 para salida estándar
-gdm_pca_min  <- minMax(gdm_pca)[1, ]
-gdm_pca_max  <- minMax(gdm_pca)[2, ]
-gdm_pca_norm <- (gdm_pca - gdm_pca_min) / (gdm_pca_max - gdm_pca_min)
+# Normalización a rango 0-1
+gdm.pca <- (gdm.pca - minMax(gdm.pca)[1,]) / (minMax(gdm.pca)[2,] - minMax(gdm.pca)[1,])
 
-# Guardar Raster PCA (Compuesto RGB de biodiversidad)
-writeRaster(gdm_pca_norm, "gdm_pca_rgb.tif", overwrite = TRUE)
+# Exportar Raster PCA
+writeRaster(gdm.pca, filename = 'C:/Users/elkin.noguera/Documents/gdm.pcacc_san_andres.tif', 
+            overwrite = TRUE)
 
-# 7. ZONIFICACIÓN MEDIANTE CLUSTERING DIFUSO ----
-# Convertir SpatRaster a lista para compatibilidad con geocmeans
-dataset <- as.list(gdm_pca_norm)
+# 7. ZONIFICACIÓN CON GEOCMEANS (Fuzzy K-Means) ----
+# Convertir SpatRaster a lista de capas
+dataset <- as.list(gdm.pca)
+names(dataset) <- names(gdm.pca)
 
-# Activar paralelismo (Multisession es compatible con todos los SO)
+# Configurar computación paralela (actualizado de multiprocess a multisession)
 future::plan(future::multisession, workers = 6)
 
-# Ejecutar Fuzzy C-Means (Parámetros optimizados k=6, m=1.9)
-fcm_res <- CMeans(dataset, k = 6, m = 1.9, standardize = TRUE, 
-                  seed = 789, init = "kpp")
+# Selección de parámetros óptimos (k y m)
+FCMvalues <- select_parameters.mc(algo = "FCM", data = dataset, 
+                                  k = 5:10, m = seq(1.1, 2, 0.1), spconsist = FALSE, 
+                                  indices = c("Explained.inertia", "Silhouette.index"),
+                                  verbose = TRUE)
 
-# 8. EXPORTACIÓN FINAL ----
-# El resultado Groups indica la zona más probable para cada celda
-writeRaster(fcm_res$rasters$Groups, "zonificacion_biotica_final.tif", overwrite = TRUE)
+# Ejecución del algoritmo final
+FCM_result <- CMeans(dataset, k = 6, m = 1.9, standardize = TRUE,
+                     verbose = FALSE, seed = 789, tol = 0.001, init = "kpp")
 
-# Visualización rápida del resultado
-plot(fcm_res$rasters$Groups, col = viridis(6), main = "Zonificación Biótica (Motor Terra)")
+# 8. EXPORTACIÓN DE RESULTADOS Y GUARDADO ----
+# Guardar raster de grupos
+writeRaster(FCM_result$rasters$Groups, 
+            filename = 'C:/Users/elkin.noguera/Documents/Grupos_san_andres.tif', 
+            overwrite = TRUE)
 
-# Guardar sesión para trazabilidad
-save.image("gdm_analysis_terra.RData")
+# Guardar imagen del espacio de trabajo
+save.image("D:/2022/SeaFlower/GDM/gdm_San_Andres.RData")
+
+# Visualización rápida
+plot(FCM_result$rasters$Groups, col = viridis(6), main = "Zonificación Biótica")
+
 
