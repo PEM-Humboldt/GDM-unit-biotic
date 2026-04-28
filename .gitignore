@@ -1,0 +1,12 @@
+# R específicos
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+.Rapp.history
+
+# Archivos de datos pesados (No subas TIFs o CSVs grandes)
+*.tif
+*.csv
+*.RData
+*.asc
