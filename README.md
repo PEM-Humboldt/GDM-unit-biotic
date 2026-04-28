@@ -14,7 +14,7 @@ El análisis se divide en tres fases principales:
 Para ejecutar este código, asegúrate de tener instaladas las siguientes librerías en R:
 
 ```r
-install.packages(c("gdm", "raster", "geocmeans", "data.table", "sf", "viridis", "future", "ggplot2"))
+install.packages(c("gdm", "terra", "geocmeans", "data.table", "sf", "viridis", "future", "ggplot2"))
 ```
 
 ## 📂 Estructura de Datos
