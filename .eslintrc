@@ -1,0 +1,10 @@
+{
+  "extends": "airbnb",
+  "parser": "babel-eslint",
+  "rules": {
+    "react/forbid-prop-types": "off",
+    //Something was broken in bable-eslint 10.0.3 required by react-scripts (specific version)
+    "template-curly-spacing" : "off",
+    "indent": "off"
+  }
+}
