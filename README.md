@@ -30,7 +30,7 @@ El flujo de trabajo genera:
 - **Zonificación Biótica:** Un mapa categorizado con las unidades ambientales/biológicas más representativas.
 
 ## ✒️ Autor
-* **[Elkin A. Noguera-Urbano/Instituto HUmboldt]** - *Trabajo inicial y desarrollo* - [@elkalexno](https://github.com)
+* **[Elkin A. Noguera-Urbano/Instituto Humboldt]** - *Trabajo inicial y desarrollo* - [@elkalexno](https://github.com)
 
 ---
 *Este proyecto fue desarrollado bajo el marco del análisis multigrupo para la Reserva de Biósfera SeaFlower (2022).*
