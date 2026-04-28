@@ -1,4 +1,5 @@
 ################################################################################
+# # Autor Elkin Noguera-Urbano. 28/04/2026
 # RUTINA ACTUALIZADA: GDM v1.6 (Basada en 'terra')
 # Datos Oficiales del Paquete: fitzLab-AL/gdm
 ################################################################################
