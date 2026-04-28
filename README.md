@@ -1,4 +1,4 @@
-# GDM & Biotic Zoning: San Andrés Island (SeaFlower)
+# GDM & Biotic Zoning
 
 Este repositorio contiene un flujo de trabajo avanzado en **R** para el análisis de la biodiversidad espacial y la zonificación biótica. Utiliza modelos de disimilitud generalizada (**GDM**) y algoritmos de agrupación difusa (**Fuzzy C-Means**) para entender cómo cambian las comunidades biológicas en función de variables ambientales.
 
