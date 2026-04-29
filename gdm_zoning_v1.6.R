@@ -29,7 +29,10 @@ colnames(reg_loc) <- c("species", "longitude", "latitude")
 dups2 <- duplicated(reg_loc[, c("species", "longitude", "latitude")])
 acg   <- reg_loc[!dups2, ]
 
-# Evaluación de sitios únicos
+# Evaluación de sitios únicos (en un ejercicio real se debe
+## definir un umbral basado en el número de especies por sitios, 
+## para así modelar con base en los sitios más representativos)
+
 dups3 <- duplicated(reg_loc[, c("longitude", "latitude")])
 acg2  <- reg_loc[!dups3, ]
 sites <- seq(1, nrow(acg2), 1)
@@ -73,10 +76,43 @@ gdmTab <- formatsitepair(bioData = sppTab,
 
 gdm.1 <- gdm(gdmTab, geo = TRUE)
 
+### Revisión de resultados
+# Porcentaje de desviación explicada: bondad de ajuste
+# Intercepto: disimilitud esperada entre sitios que no difieren en los predictores
+# Resumen de las I-splines ajustadas para cada predictor, 
+# incluyendo los valores de los coeficientes y su suma. 
+# La suma indica la cantidad de recambio composicional asociado a esa variable, 
+# manteniendo constantes todas las demás variables. 
+# Los resúmenes de las I-splines se ordenan según la suma de los coeficientes. 
+# Las variables con todos los coeficientes iguales a 0 no tienen relación 
+# con el patrón biológico modelado.
 
-# 5. TRANSFORMACIÓN Y PCA ----
+summary(gdm.1)
+
+###########
+###########
+###########Revisión de ajuste de las variables en función de los splines.
+
+# Los splines ajustados del Modelo Generalizado de Disimilitud (GDM) permiten 
+# interpretar los patrones biológicos y su relación con las variables, 
+# donde la altura máxima de la curva indica la importancia 
+# relativa de una variable y su forma muestra cómo varía el 
+# cambio biológico a lo largo del gradiente. 
+# 
+# Lo más importante para interpretar los modelos GDM (Modelado de Disimilitud Generalizada) 
+# a través de sus curvas (splines) es:
+# a. Importancia del predictor (Altura): La altura máxima que alcanza la curva indica qué tan importante es esa variable. Cuanto más alta sea, mayor es su contribución al cambio biológico total.
+# b. Ritmo de cambio (Forma): La forma de la curva muestra dónde ocurre el cambio. Una pendiente pronunciada indica un cambio biológico rápido en ese punto del gradiente ambiental.
+# c. Visualización: Las curvas permiten ver de forma aislada cómo influye cada variable (distancia ecológica parcial) mientras las demás se mantienen constantes.
+
+length(gdm.1$predictors) # get ideal of number of panels
+#> [1] 5
+plot(gdm.1, plot.layout=c(3,3))
+
+# 5. TRANSFORMACIÓN A RASTER Y PCA ----
 
 gdm.trans.data <- gdm.transform(gdm.1, swBioclims)
+##writeRaster(....)
 
 # Muestreo espacial
 sample.trans <- spatSample(gdm.trans.data, 10000, na.rm=TRUE)
@@ -148,11 +184,17 @@ ggplot(FCM_eval) +
 # el 80% de la variabilidad de tus datos bióticos.
 
 ### MODELO FINAL (CMeans) ----
-  # Una vez elegidos k y m de los gráficos anteriores, corres el modelo final:
+# Una vez elegidos k y m de los gráficos anteriores, corres el modelo final:
 FCM_result <- CMeans(dataset, k = 6, m = 1.5, standardize = TRUE,
                      seed = 123, tol = 0.001, init = "kpp")
+
+FCM_result$
 
 # 7. VISUALIZACIÓN FINAL ----
 par(mfrow=c(1,2))
 plotRGB(gdm.pca_norm * 255, main="GDM-PCA (Australia)")
 plot(FCM_result$rasters$Groups, main="Zonificación Biótica")
+
+# 8. EXPORTAR RASTER DE GRUPO
+FCM_result$rasters
+#writeRaster(...)
