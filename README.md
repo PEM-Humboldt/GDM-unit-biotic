@@ -9,7 +9,7 @@ El paquete [gdm de R](https://github.com/fitzLab-AL/GDM) utiliza el Modelado de 
 El análisis se divide en tres fases principales:
 1. **Modelado GDM:** Evaluación del recambio de especies (beta-diversidad) basado en variables como altura, pendiente y procesos geofísicos.
 2. **Transformación Espacial:** Reducción de dimensionalidad (PCA) de las variables ambientales transformada por el modelo biológico.
-3. **Zonificación:** Clasificación del territorio en zonas bióticas homogéneas utilizando clustering difuso espacial (`geocmeans`).
+3. **Zonificación:** Clasificación del territorio en zonas bióticas homogéneas utilizando clustering difuso espacial (`geocmeans`)..
 
 ## 🛠️ Requisitos
 
